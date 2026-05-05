@@ -45,10 +45,11 @@ phonectl/
 │   └── phonectl              Main CLI entrypoint (bash dispatcher)
 ├── lib/
 │   ├── commands/             One file per command group
+│   │   ├── init.sh           init (first-run wizard)
 │   │   ├── connection.sh     ssh, connect, shell, status
-│   │   ├── info.sh           battery, ip, storage, uptime, info
+│   │   ├── info.sh           battery, ip, storage, uptime, info, stats
 │   │   ├── transfer.sh       pull, push, backup
-│   │   ├── control.sh        reboot, scrcpy, install
+│   │   ├── control.sh        reboot, wake, scrcpy, install
 │   │   ├── termux.sh         exec, proot
 │   │   └── config.sh         config get / set
 │   └── core/
