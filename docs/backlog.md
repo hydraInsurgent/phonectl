@@ -22,7 +22,7 @@ What is currently being planned or built:
 
 | Plan file | Issue | Branch | Status |
 |-----------|-------|--------|--------|
-| - | - | - | - |
+| `PCTL-P1-v0.1-foundation.md` | [#1](https://github.com/hydraInsurgent/phonectl/issues/1) | `feature/v0.1-#1` | In Progress |
 
 ---
 

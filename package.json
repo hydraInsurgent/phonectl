@@ -1,0 +1,47 @@
+{
+  "name": "phonectl",
+  "version": "0.1.0",
+  "description": "Bash CLI to manage an Android phone as a headless home server, via adb + ssh + scrcpy.",
+  "bin": {
+    "phonectl": "./bin/phonectl"
+  },
+  "files": [
+    "bin",
+    "lib",
+    "SMOKE.md"
+  ],
+  "scripts": {
+    "test": "bats test/"
+  },
+  "keywords": [
+    "android",
+    "adb",
+    "ssh",
+    "termux",
+    "homelab",
+    "cli",
+    "phone",
+    "scrcpy"
+  ],
+  "author": "Manu Dubey <manudubey77@gmail.com>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hydraInsurgent/phonectl.git"
+  },
+  "bugs": {
+    "url": "https://github.com/hydraInsurgent/phonectl/issues"
+  },
+  "homepage": "https://github.com/hydraInsurgent/phonectl#readme",
+  "engines": {
+    "node": ">=18"
+  },
+  "os": [
+    "linux",
+    "darwin"
+  ],
+  "private": true,
+  "devDependencies": {
+    "bats": "^1.13.0"
+  }
+}
