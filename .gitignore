@@ -1,0 +1,33 @@
+# Claude Code / toolkit workflow internals (kept local, not for public repo)
+.claude/
+CLAUDE.md
+LESSONS.md
+.plib-lock.json
+docs/plans/
+docs/tests/
+
+# Original design conversation (personal context, large)
+initial-chat.txt
+
+# Node / npm
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Local config / secrets
+.env
+.env.local
+.env.*.local
