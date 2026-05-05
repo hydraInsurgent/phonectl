@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+# test/_stubs/adb - PATH-stub adb for unit tests.
+#
+# Behavior is controlled entirely by environment variables set by the test:
+#   STUB_ADB_OUTPUT       : literal string to print on stdout
+#   STUB_ADB_OUTPUT_FILE  : path to a file whose contents go to stdout
+#   STUB_ADB_STDERR       : literal string to print on stderr
+#   STUB_ADB_EXIT         : exit code to return (default 0)
+#   STUB_ADB_LOG          : if set, append the invocation's argv to this file,
+#                           one line per call. Lets tests assert that the real
+#                           command construction was correct.
+#
+# Tests that need different output for different invocations should clear and
+# reset STUB_ADB_OUTPUT (etc.) between calls, or use STUB_ADB_OUTPUT_FILE
+# pointing at a fresh fixture each time.
+
+set -u
+
+if [[ -n "${STUB_ADB_LOG:-}" ]]; then
+    printf 'adb %s\n' "$*" >> "${STUB_ADB_LOG}"
+fi
+
+if [[ -n "${STUB_ADB_OUTPUT_FILE:-}" ]]; then
+    cat "${STUB_ADB_OUTPUT_FILE}"
+elif [[ -n "${STUB_ADB_OUTPUT:-}" ]]; then
+    printf '%s\n' "${STUB_ADB_OUTPUT}"
+fi
+
+if [[ -n "${STUB_ADB_STDERR:-}" ]]; then
+    printf '%s\n' "${STUB_ADB_STDERR}" >&2
+fi
+
+exit "${STUB_ADB_EXIT:-0}"

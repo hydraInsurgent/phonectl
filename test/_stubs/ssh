@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+# test/_stubs/ssh - PATH-stub ssh for unit tests.
+#
+# Mirrors the adb stub:
+#   STUB_SSH_OUTPUT, STUB_SSH_OUTPUT_FILE, STUB_SSH_STDERR, STUB_SSH_EXIT, STUB_SSH_LOG
+
+set -u
+
+if [[ -n "${STUB_SSH_LOG:-}" ]]; then
+    printf 'ssh %s\n' "$*" >> "${STUB_SSH_LOG}"
+fi
+
+if [[ -n "${STUB_SSH_OUTPUT_FILE:-}" ]]; then
+    cat "${STUB_SSH_OUTPUT_FILE}"
+elif [[ -n "${STUB_SSH_OUTPUT:-}" ]]; then
+    printf '%s\n' "${STUB_SSH_OUTPUT}"
+fi
+
+if [[ -n "${STUB_SSH_STDERR:-}" ]]; then
+    printf '%s\n' "${STUB_SSH_STDERR}" >&2
+fi
+
+exit "${STUB_SSH_EXIT:-0}"
