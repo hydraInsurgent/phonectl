@@ -55,25 +55,32 @@ command surface that hides that complexity and grows alongside the homelab.
 
 ## Current Scope
 
-This is what PhoneCTL does today. Items here are not permanent limits - they
-reflect where the product is right now and what assumptions the code makes.
+This document describes the **v1 product** (the target we are building toward).
+PhoneCTL ships in phases; today's status:
 
-- CLI only, distributed via npm (`npm install -g phonectl`), runs on Linux and macOS
-- Single device - one phone configured at a time, stored in `~/.config/phonectl/config`
-- Bash implementation - relies on `adb`, `ssh`, `scrcpy` installed on the host
-- Connection: `ssh`, `connect`, `shell`, `status`
-- Device info: `battery`, `ip`, `storage`, `uptime`, `info`, `stats` (one-shot CPU/RAM/temp via adb)
-- File transfer: `pull`, `push`, `backup`
-- Device control: `reboot`, `wake` (screen on), `scrcpy`, `install <apk>`
-- Termux helpers: `exec <cmd>` (one-shot SSH command), `proot` (SSH then auto-enter proot Ubuntu)
-- Config + meta: `init` (first-run wizard), `config`, `about`, `help`, `version`
+**v0.1 (live, on `feature/v0.1-#1`, not yet on npm):**
+- CLI distributed locally via `npm link` from source; `npm publish` deferred to v1.0.0
+- Single device, single config file at `~/.config/phonectl/config` (parsed not sourced, `chmod 600`)
+- Bash implementation - relies on `adb`, `ssh` installed on the host (`scrcpy` only required when its verb lands)
+- 9 verbs working: `init`, `ssh`, `connect`, `status`, `pull`, `push`, `config`, `help`, `version`
+- `bats-core` test harness with PATH-stubbed `adb` / `ssh` and real-phone fixtures
 
-**v1 explicitly does NOT include:**
+**Coming in v0.2 → v1.0.0 (still in v1 scope, not started):**
+- Remaining 13 verbs:
+  - **Device info:** `battery`, `ip`, `storage`, `uptime`, `info`, `stats`
+  - **File transfer:** `backup`
+  - **Device control:** `reboot`, `wake`, `scrcpy`, `install`
+  - **Termux helpers:** `exec`, `proot`
+  - **Meta:** `about`
+- `npm publish` as `phonectl` lands at v1.0.0
+- Public README polish, blog post
+
+**v1 explicitly does NOT include (deferred to Someday):**
 - Windows support (no bash; Node-wrapper rewrite is Someday)
 - Multiple device profiles or LAN auto-discovery (mDNS / Bonjour)
 - User-defined custom commands / plugins
-- Service management (`nginx`, `pihole`, `dotnet`) - Someday
-- Application deployment (`deploy`, `logs`, `tunnel`) - Someday
+- Service management (`nginx`, `pihole`, `dotnet`)
+- Application deployment (`deploy`, `logs`, `tunnel`)
 
 ---
 

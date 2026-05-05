@@ -62,13 +62,39 @@ logic belongs in `lib/core/`.
 
 ## Testing
 
-- **Framework:** `bats-core` (Bats Automated Testing System for bash).
-- **One test file per command group** in `test/` (e.g. `test/info.bats`).
-- **Mock external binaries** by prepending a stub directory to `PATH` in
-  `setup()`. Tests never hit a real phone.
+- **Framework:** `bats-core` (Bats Automated Testing System for bash). The
+  npm package name is `bats`, installed as a devDependency. Run with `npm test`.
+- **One test file per command group** in `test/` (e.g. `test/cmd_connection.bats`).
+- **Mock external binaries via PATH-prepended stubs.** `test/_stubs/adb` and
+  `test/_stubs/ssh` are bash scripts that take their behavior from env vars
+  set per test. The stubs are added to `$PATH` once at file-load time by
+  `test/test_helper.bash`. Tests never hit a real phone.
+- **Stub control via env vars.** Each stub honors:
+  - `STUB_<TOOL>_OUTPUT`: literal text to print on stdout
+  - `STUB_<TOOL>_OUTPUT_FILE`: path to a file whose contents go to stdout
+    (this is how parser tests stream real-phone fixtures into the parser)
+  - `STUB_<TOOL>_STDERR`: literal text to print on stderr
+  - `STUB_<TOOL>_EXIT`: exit code (default 0)
+  - `STUB_<TOOL>_LOG`: append-the-argv path; lets a test assert that the
+    real argv was constructed correctly (regex-grep the log file)
+- **Real-output fixtures in `test/fixtures/`.** Captured directly from the
+  test phone (via `adb shell ...`, `ssh ...` and friends). Parsers are
+  exercised against the exact byte stream they will see in production -
+  catches Android-shell `\r\n` line endings, OPLUS-specific `dumpsys battery`
+  layouts, and Android 13 `df /sdcard` device naming (`/dev/fuse`) which a
+  hand-rolled fixture would miss.
+- **Function-override pattern for non-stub-able paths.** When a verb makes
+  multiple distinct calls (e.g. `cmd_status` calling `adb_shell` for getprop,
+  dumpsys, df, ip-addr, uptime), expose the helpers as top-level functions
+  and override them inside the test - one switch-on-argv function dispatches
+  to the right fixture file. Keeps the stub minimal and the test obvious.
 - **Test names describe behaviour:** `@test "battery prints level when adb returns dumpsys output"`.
 - **What to test:** parsing logic, argument validation, config-loading,
   exit codes. Skip "does adb exist on this machine" - that is the host's job.
+  Real-device validation lives in `SMOKE.md` (manual checklist).
+- **Per-test isolation.** `phonectl_test_setup` allocates a fresh tmp dir
+  and points `XDG_CONFIG_HOME` and `HOME` at it, so config writes never
+  touch the user's real `~/.config/phonectl/config`.
 
 ---
 
