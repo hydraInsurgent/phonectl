@@ -1,0 +1,104 @@
+#!/usr/bin/env bash
+# bin/phonectl - top-level dispatcher.
+#
+# Resolves lib/ relative to its own location (following symlinks so an
+# `npm link` install works). Sources the core helpers and command groups,
+# applies config, then dispatches by the first arg.
+
+set -euo pipefail
+
+# Follow the symlink so that an installed bin (npm link / global install)
+# still resolves the lib/ files correctly inside the package directory.
+PCTL_BIN="$(readlink -f "${BASH_SOURCE[0]}")"
+PCTL_ROOT="$(cd "$(dirname "${PCTL_BIN}")/.." && pwd)"
+PCTL_LIB="${PCTL_ROOT}/lib"
+
+# Core helpers (no shebangs - sourced).
+# shellcheck source=lib/core/output.sh
+source "${PCTL_LIB}/core/output.sh"
+# shellcheck source=lib/core/deps.sh
+source "${PCTL_LIB}/core/deps.sh"
+# shellcheck source=lib/core/config.sh
+source "${PCTL_LIB}/core/config.sh"
+# shellcheck source=lib/core/adb.sh
+source "${PCTL_LIB}/core/adb.sh"
+# shellcheck source=lib/core/ssh.sh
+source "${PCTL_LIB}/core/ssh.sh"
+# shellcheck source=lib/core/help.sh
+source "${PCTL_LIB}/core/help.sh"
+
+# Command groups.
+# shellcheck source=lib/commands/config.sh
+source "${PCTL_LIB}/commands/config.sh"
+# shellcheck source=lib/commands/init.sh
+source "${PCTL_LIB}/commands/init.sh"
+# shellcheck source=lib/commands/connection.sh
+source "${PCTL_LIB}/commands/connection.sh"
+# shellcheck source=lib/commands/transfer.sh
+source "${PCTL_LIB}/commands/transfer.sh"
+
+# Read defaults + ~/.config/phonectl/config + PHONECTL_* env overrides.
+config_load
+
+# `phonectl version` reads from package.json with grep so we do not need
+# a Node dependency at runtime - bash + grep + sed are enough.
+cmd_version() {
+    local pkg="${PCTL_ROOT}/package.json"
+    if [[ ! -r "${pkg}" ]]; then
+        error "cannot find package.json at ${pkg}"
+        return 1
+    fi
+    local v
+    v="$(grep -E '"version"[[:space:]]*:' "${pkg}" \
+        | head -1 \
+        | sed -E 's/.*"version"[[:space:]]*:[[:space:]]*"([^"]+)".*/\1/')"
+    if [[ -z "${v}" ]]; then
+        error "could not parse version from package.json"
+        return 1
+    fi
+    printf 'phonectl %s\n' "${v}"
+}
+
+# No-args is the same as `help`.
+if [[ $# -eq 0 ]]; then
+    help_text
+    exit 0
+fi
+
+cmd="$1"
+shift
+
+case "${cmd}" in
+    help|--help|-h)
+        help_text
+        ;;
+    version|--version|-V)
+        cmd_version
+        ;;
+    init)
+        cmd_init "$@"
+        ;;
+    config)
+        cmd_config "$@"
+        ;;
+    ssh)
+        cmd_ssh "$@"
+        ;;
+    connect)
+        cmd_connect "$@"
+        ;;
+    status)
+        cmd_status "$@"
+        ;;
+    pull)
+        cmd_pull "$@"
+        ;;
+    push)
+        cmd_push "$@"
+        ;;
+    *)
+        error "unknown command: ${cmd}"
+        info "  Run \`phonectl help\` for the verb list."
+        exit 1
+        ;;
+esac
