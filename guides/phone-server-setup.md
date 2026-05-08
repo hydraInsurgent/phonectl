@@ -99,7 +99,7 @@ Same device should now show up as `192.168.1.51:5555    device`.
 
 ### Step 3 - Reserve a static IP on the router
 
-**Why:** Step 2's `adb connect` needs to know which IP to dial. If DHCP gives the phone a different lease tomorrow, every script breaks. **Pin the IP on the router**, not on the phone.
+**Why:** Step 2's `adb connect` needs to know which IP to dial. If DHCP gives the phone a different lease tomorrow, every script breaks. **Pin the IP on the router**, not on the phone. (If "DHCP", "lease", and "reservation vs static" aren't fully solid concepts yet, see [home-networking-fundamentals](../docs/learnings/home-networking-fundamentals.md) for the why.)
 
 Router admin UIs differ; the pattern is the same:
 

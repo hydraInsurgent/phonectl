@@ -22,7 +22,7 @@ What is currently being planned or built:
 
 | Plan file | Issue | Branch | Status |
 |-----------|-------|--------|--------|
-| `PCTL-P1-v0.1-foundation.md` | [#1](https://github.com/hydraInsurgent/phonectl/issues/1) | `feature/v0.1-#1` | In Progress |
+| - | - | - | - |
 
 ---
 
@@ -32,7 +32,10 @@ Future features - not yet started. Add GitHub issue number when created.
 
 | # | Title | Priority | Notes |
 |---|-------|----------|-------|
-| - | - | - | - |
+| - | `phonectl pair` | High | Walk user through Android 11+ wireless debugging pair flow (pair port + 6-digit code on phone, connect port back), update `~/.config/phonectl/config` with the new dynamic adb_port. Removes manual ADB-port juggling after every phone reboot. |
+| - | `phonectl status` ADB fallback | High | When ADB is unreachable (port rotated, debugging off post-reboot), fall back to SSH + `termux-battery-status` so `status` still returns level/temp/plug-state. Lose voltage + charge_counter + OPLUS extras in fallback mode; surface that in output. |
+| - | `phonectl battery` (snapshot + log) | Medium | Verb group: `battery` for one-shot snapshot, `battery log` for continuous CSV. Default path: SSH + `termux-battery-status` (level/status/temp/current; no voltage / cc). `--adb` flag forces dumpsys path with full OPLUS-rich data. Logger that runs *on the phone* (Termux + Termux:Boot + tmux) is the production design; standalone `~/battery-logger.sh` becomes the reference for the ADB-rich one-shot. |
+| - | `pull` / `push` SSH path via scp | Medium | Add SSH-based file transfer alongside the existing ADB path. Default: SSH (works post-reboot without re-pair). `--adb` opt-in for the ADB path when ADB is up. Aligns with the SSH-default + ADB-fallback architecture. |
 
 ---
 
@@ -52,7 +55,7 @@ Recently completed work (keep last 10):
 
 | # | Title | Type | Closed |
 |---|-------|------|--------|
-| - | - | - | - |
+| [#1](https://github.com/hydraInsurgent/phonectl/issues/1) | v0.1 - foundation + first 9 verbs | feature | 2026-05-06 |
 
 ---
 

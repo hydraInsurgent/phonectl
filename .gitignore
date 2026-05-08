@@ -6,6 +6,9 @@ LESSONS.md
 docs/plans/
 docs/tests/
 
+# Personal deployment snapshot (device-specific MACs, IPs, port allocations, project state)
+docs/setup-state.md
+
 # Original design conversation (personal context, large)
 initial-chat.txt
 
@@ -31,3 +34,6 @@ Thumbs.db
 .env
 .env.local
 .env.*.local
+
+# Captured router admin pages (contain MAC addresses, internal IPs, ISP details, GPON serials)
+assets/Router/
