@@ -1,0 +1,2 @@
+Cannot bind netlink socket: Permission denied
+BLOCKED

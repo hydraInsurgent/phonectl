@@ -1,9 +1,8 @@
 # lib/core/help.sh - the user-facing help text.
 #
-# Kept in core so future verbs added across multiple lib/commands/*.sh
-# files can all be reflected here from one place. The formatting is
-# intentionally plain (no colors); the dispatcher pipes through
-# `output.sh` only when something is dynamic.
+# Kept in core so verbs added across multiple lib/commands/*.sh files
+# can all be reflected here from one place. v0.2 splits the verbs by
+# transport: connect / pair are ADB-purpose, everything else is SSH.
 
 help_text() {
     cat <<'EOF'
@@ -12,17 +11,29 @@ phonectl - manage an Android phone as a headless home server
 USAGE
   phonectl <verb> [args...]
 
-CONNECTION
-  ssh                       SSH into Termux on the configured phone
-  connect                   Wireless ADB connect (with host_alt fallback)
-  status                    One-panel device status (model, battery, IP, ...)
+CONNECTION (SSH)
+  ssh [cmd...]              SSH into Termux on the configured phone, or
+                            run a one-shot remote command
+  status                    One-panel device status via SSH (battery,
+                            storage, uptime, WiFi). Requires `termux-api`
+                            installed on the phone.
 
-FILE TRANSFER
+FILE TRANSFER (SCP)
   pull <remote> <local>     Copy a file from the phone to this machine
   push <local> <remote>     Copy a file from this machine to the phone
 
+ADB
+  pair                      First-time Android 11+ wireless-debugging
+                            pair wizard. Writes the connect port to
+                            ~/.config/phonectl/config.
+  connect [<port>]          Connect ADB. Tries USB first, then wireless
+                            at the saved adb_port. With <port>, updates
+                            adb_port first (post-reboot recovery: trust
+                            is still good, only the port changed).
+
 CONFIG
-  init                      First-run wizard: detect device + write config
+  init                      First-run wizard: pure manual prompts (no
+                            ADB or USB required)
   config                    Show current config (key=value lines)
   config <key>              Print one config value
   config <key> <value>      Set a config value

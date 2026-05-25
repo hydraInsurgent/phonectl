@@ -1,12 +1,14 @@
 # lib/commands/connection.sh - cmd_ssh, cmd_connect, cmd_status.
 #
-# `cmd_status` is the most parsing-heavy verb in v0.1: it makes several
-# adb shell calls, parses /proc + dumpsys output, then renders one panel.
-# The parsers were written against real captured output in test/fixtures/
-# so they handle the OPLUS-specific dumpsys layout and Android 13's df
-# `/dev/fuse` device naming correctly.
+# v0.2 changes from v0.1:
+#   - cmd_status is SSH-only (uses termux-battery-status JSON,
+#     termux-wifi-connectioninfo JSON, df /storage/emulated/0, uptime
+#     command, getprop over SSH). The v0.1 ADB-based pipeline is gone.
+#   - cmd_connect uses adb_select_device (USB-first, wireless-fallback)
+#     and accepts an optional <port> arg for the "trust persists, port
+#     changed" post-reboot recovery case (no full re-pair needed).
 
-# ---- ssh --------------------------------------------------------------------
+# ---- ssh -------------------------------------------------------------------
 
 cmd_ssh() {
     require_deps ssh || return 1
@@ -14,64 +16,83 @@ cmd_ssh() {
     ssh_run "$@"
 }
 
-# ---- connect ----------------------------------------------------------------
+# ---- connect --------------------------------------------------------------
 
+# Usage:
+#   phonectl connect                 # try USB-first, then wireless at saved adb_port
+#   phonectl connect <new-port>      # update adb_port to <new-port>, then reconnect
+#
+# The optional port arg covers the common case after a phone reboot or
+# wireless-debugging toggle: trust is still established with the laptop
+# (no re-pair needed), only the dynamic connect port has changed.
 cmd_connect() {
     require_deps adb || return 1
     config_require_host || return 1
-    local resolved
-    if resolved="$(adb_connect)"; then
-        success "Connected to ${resolved}"
-    else
-        error "could not connect to ${PCTL_HOST}:${PCTL_ADB_PORT}"
-        if [[ -n "${PCTL_HOST_ALT:-}" ]]; then
-            info "  (also tried ${PCTL_HOST_ALT}:${PCTL_ADB_PORT})"
+
+    if [[ $# -gt 0 ]]; then
+        local new_port="$1"
+        if ! [[ "${new_port}" =~ ^[0-9]+$ ]]; then
+            error "adb_port must be a number, got: ${new_port}"
+            return 1
         fi
-        return 1
+        config_set adb_port "${new_port}"
+        config_load
+        info "Updated adb_port to ${new_port}"
     fi
+
+    local device
+    if device=$(adb_select_device); then
+        success "Connected via ${device}"
+        return 0
+    fi
+
+    error "no adb device available."
+    info "  - For USB: plug in the phone with USB debugging enabled."
+    info "  - If only the port changed: phonectl connect <new-port>"
+    info "  - First-time pair / phone-rebooted-fully: phonectl pair"
+    return 1
 }
 
-# ---- status -----------------------------------------------------------------
+# ---- status (SSH-only) ----------------------------------------------------
 #
-# Implementation strategy (per plan):
-#  - Each adb_shell call is captured into its own variable, with `tr -d '\r'`
-#    to normalize Android shell's \r\n line endings.
-#  - Parsing uses awk against the field-of-interest; defaults to "?" or "0"
-#    if a field is missing.
-#  - On any adb failure, set -e + pipefail (set in bin/phonectl) propagate
-#    the non-zero exit code and the user sees the raw adb error verbatim
-#    (per the "fail loud" principle in the plan).
+# Implementation:
+#  - One ssh_check call up-front fails fast if SSH is down (3s timeout).
+#  - Each data section gathered via its own ssh_run call. Order matters
+#    only for readability; failures still propagate via set -e in bin/phonectl.
+#  - JSON outputs (termux-battery-status, termux-wifi-connectioninfo)
+#    parsed with jq. Text outputs (df, uptime, getprop) parsed with awk/sed.
+#  - `tr -d '\r'` applied where Termux's bash might emit CRLF, defensive.
 
 cmd_status() {
-    require_deps adb ssh || return 1
+    require_deps ssh jq || return 1
     config_require_host || return 1
 
-    # ----- gather -----
-    local model android battery storage_line uptime_secs ip_addr
-    model=$(adb_shell getprop ro.product.model | tr -d '\r')
-    android=$(adb_shell getprop ro.build.version.release | tr -d '\r')
-    battery=$(adb_shell dumpsys battery | tr -d '\r')
-    storage_line=$(adb_shell df /sdcard | tr -d '\r' | tail -1)
-    uptime_secs=$(adb_shell cat /proc/uptime | tr -d '\r' | awk '{print $1}')
-    ip_addr=$(adb_shell ip addr show wlan0 \
-        | tr -d '\r' \
-        | awk '/inet / { sub(/\/.*/, "", $2); print $2; exit }')
+    # ---- reachability probe ----
+    if ! ssh_check echo ok >/dev/null 2>&1; then
+        error "SSH unreachable on ${PCTL_HOST}:${PCTL_SSH_PORT}"
+        info "  Check sshd on the phone, or whether the LAN can see it"
+        info "  (see docs/issues/wifi-lan-inbound-drops.md if pings are also failing)."
+        return 1
+    fi
 
-    # ----- parse battery (standard 'Current Battery Service state' block) -----
-    local level temp_milli status_code temp_c status_label
-    level=$(printf '%s\n' "${battery}" | awk -F': *' '/^  level:/{print $2; exit}')
-    temp_milli=$(printf '%s\n' "${battery}" | awk -F': *' '/^  temperature:/{print $2; exit}')
-    status_code=$(printf '%s\n' "${battery}" | awk -F': *' '/^  status:/{print $2; exit}')
-    temp_c=$(awk -v t="${temp_milli:-0}" 'BEGIN { printf "%.1f", t/10 }')
-    case "${status_code}" in
-        2) status_label="charging" ;;
-        3) status_label="discharging" ;;
-        4) status_label="not charging" ;;
-        5) status_label="full" ;;
-        *) status_label="unknown(${status_code:-?})" ;;
-    esac
+    # ---- gather ----
+    local model android battery_json storage_line uptime_line wifi_json
+    model=$(ssh_run getprop ro.product.model | tr -d '\r')
+    android=$(ssh_run getprop ro.build.version.release | tr -d '\r')
+    battery_json=$(ssh_battery_status) || return 1
+    storage_line=$(ssh_run df /storage/emulated/0 | tr -d '\r' | tail -1)
+    uptime_line=$(ssh_run uptime | tr -d '\r')
+    wifi_json=$(ssh_run termux-wifi-connectioninfo)
 
-    # ----- parse df (1K-blocks: total, used, available, use%) -----
+    # ---- parse battery (JSON; temperature already in C from Termux:API) ----
+    local level temp status plugged health
+    level=$(printf '%s' "${battery_json}" | jq -r '.level // ""')
+    temp=$(printf '%s' "${battery_json}" | jq -r '.temperature // ""')
+    status=$(printf '%s' "${battery_json}" | jq -r '.status // ""')
+    plugged=$(printf '%s' "${battery_json}" | jq -r '.plugged // ""')
+    health=$(printf '%s' "${battery_json}" | jq -r '.health // ""')
+
+    # ---- parse storage (df: filesystem, 1K-blocks, used, available, use%, mount) ----
     local total_kb used_kb avail_kb use_pct total_gb used_gb avail_gb
     total_kb=$(printf '%s\n' "${storage_line}" | awk '{print $2}')
     used_kb=$(printf '%s\n' "${storage_line}" | awk '{print $3}')
@@ -81,24 +102,23 @@ cmd_status() {
     used_gb=$(awk -v v="${used_kb:-0}" 'BEGIN { printf "%.1f", v/1024/1024 }')
     avail_gb=$(awk -v v="${avail_kb:-0}" 'BEGIN { printf "%.1f", v/1024/1024 }')
 
-    # ----- pretty uptime -----
+    # ---- parse uptime ("HH:MM:SS up X day, Y:Z, load average: ...") ----
+    # Extract everything between "up " and the next comma. Handles both
+    # short (" up 1:09,") and long (" up 1 day, 3:45,") formats.
     local uptime_pretty
-    uptime_pretty=$(awk -v s="${uptime_secs:-0}" 'BEGIN {
-        d = int(s/86400); s -= d*86400
-        h = int(s/3600);  s -= h*3600
-        m = int(s/60)
-        if (d > 0)      printf "%dd %dh %dm", d, h, m
-        else if (h > 0) printf "%dh %dm", h, m
-        else            printf "%dm", m
-    }')
+    uptime_pretty=$(printf '%s' "${uptime_line}" \
+        | sed -nE 's/^.* up +([^,]+(,[^,]*day[^,]*)?),.*$/\1/p' \
+        | head -1)
+    [[ -z "${uptime_pretty}" ]] && uptime_pretty="?"
 
-    # ----- ssh reachability (3-second timeout, BatchMode = no password prompt) -----
-    local ssh_status="unreachable"
-    if ssh_check echo ok >/dev/null 2>&1; then
-        ssh_status="reachable"
-    fi
+    # ---- parse wifi (JSON; ssid/mac/bssid are randomized by Android privacy) ----
+    local ip rssi link_speed_mbps freq_mhz
+    ip=$(printf '%s' "${wifi_json}" | jq -r '.ip // ""')
+    rssi=$(printf '%s' "${wifi_json}" | jq -r '.rssi // ""')
+    link_speed_mbps=$(printf '%s' "${wifi_json}" | jq -r '.link_speed_mbps // ""')
+    freq_mhz=$(printf '%s' "${wifi_json}" | jq -r '.frequency_mhz // ""')
 
-    # ----- render -----
+    # ---- render ----
     header "Device"
     kv "Model" "${model:-?}"
     kv "Android" "${android:-?}"
@@ -106,8 +126,10 @@ cmd_status() {
     echo
     header "Battery"
     kv "Level" "${level:-?}%"
-    kv "Temp" "${temp_c}°C"
-    kv "Status" "${status_label}"
+    kv "Temp" "${temp:-?}°C"
+    kv "Status" "${status:-?}"
+    kv "Plug" "${plugged:-?}"
+    kv "Health" "${health:-?}"
 
     echo
     header "Storage"
@@ -121,7 +143,9 @@ cmd_status() {
 
     echo
     header "Network"
-    kv "WiFi IP" "${ip_addr:-(not detected)}"
+    kv "WiFi IP" "${ip:-?}"
+    kv "RSSI" "${rssi:-?} dBm"
+    kv "Link" "${link_speed_mbps:-?} Mbps @ ${freq_mhz:-?} MHz"
     kv "Configured" "${PCTL_HOST}"
-    kv "SSH" "${PCTL_HOST}:${PCTL_SSH_PORT} (${ssh_status})"
+    kv "SSH" "${PCTL_HOST}:${PCTL_SSH_PORT} (reachable)"
 }

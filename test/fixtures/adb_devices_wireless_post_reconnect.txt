@@ -1,0 +1,3 @@
+List of devices attached
+192.168.1.51:41755     device product:RMX3360 model:RMX3360 device:RE54ABL1 transport_id:1
+

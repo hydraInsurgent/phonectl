@@ -1,0 +1,4 @@
+List of devices attached
+abcd1234efgh           device 1-2.1 product:RMX3360 model:RMX3360 device:RE54ABL1 transport_id:1
+192.168.1.51:41267     device product:RMX3360 model:RMX3360 device:RE54ABL1 transport_id:2
+

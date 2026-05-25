@@ -1,5 +1,5 @@
 #!/usr/bin/env bats
-# test/cmd_connection.bats - cmd_ssh, cmd_connect, cmd_status.
+# test/cmd_connection.bats - cmd_ssh, cmd_connect, cmd_status (v0.2 SSH-only).
 
 load 'test_helper'
 
@@ -19,25 +19,17 @@ setup() {
 }
 teardown() { phonectl_test_teardown; }
 
-# ---- cmd_ssh ----------------------------------------------------------------
+# ---- cmd_ssh ---------------------------------------------------------------
 
-@test "cmd_ssh forwards to ssh_run with no extra args" {
+@test "cmd_ssh forwards args to ssh_run" {
     STUB_SSH_LOG="${TEST_TMP}/ssh.log" \
         STUB_SSH_OUTPUT="ok" \
-        run cmd_ssh
-    [ "$status" -eq 0 ]
-    grep -q '^ssh -p 8022 192.168.1.51 *$' "${TEST_TMP}/ssh.log"
-}
-
-@test "cmd_ssh forwards remote command verbatim" {
-    STUB_SSH_LOG="${TEST_TMP}/ssh.log" \
-        STUB_SSH_OUTPUT="hi" \
         run cmd_ssh uname -a
     [ "$status" -eq 0 ]
     grep -q 'ssh -p 8022 192.168.1.51 uname -a' "${TEST_TMP}/ssh.log"
 }
 
-@test "cmd_ssh fails with hint when no host configured" {
+@test "cmd_ssh fails with init hint when no host" {
     rm -f "${XDG_CONFIG_HOME}/phonectl/config"
     config_load
     run cmd_ssh
@@ -45,82 +37,104 @@ teardown() { phonectl_test_teardown; }
     [[ "$output" == *"phonectl init"* ]]
 }
 
-# ---- cmd_connect ------------------------------------------------------------
+# ---- cmd_connect -----------------------------------------------------------
 
-@test "cmd_connect prints success when adb says 'connected to'" {
-    STUB_ADB_OUTPUT="connected to 192.168.1.51:5555" run cmd_connect
-    [ "$status" -eq 0 ]
-    [[ "$output" == *"Connected to 192.168.1.51:5555"* ]]
-}
-
-@test "cmd_connect prints success when adb says 'already connected'" {
-    STUB_ADB_OUTPUT="already connected to 192.168.1.51:5555" run cmd_connect
-    [ "$status" -eq 0 ]
-    [[ "$output" == *"Connected to 192.168.1.51:5555"* ]]
-}
-
-@test "cmd_connect fails with error when adb returns failure" {
-    STUB_ADB_OUTPUT="failed to connect to '192.168.1.51:5555': Connection refused" \
-        STUB_ADB_EXIT=1 \
+@test "cmd_connect (no args) uses adb_select_device against saved config" {
+    STUB_ADB_OUTPUT_FILE="${PHONECTL_FIXTURES}/adb_devices_usb_only.txt" \
         run cmd_connect
-    [ "$status" -ne 0 ]
-    [[ "$output" == *"could not connect"* ]]
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Connected via abcd1234efgh"* ]]
 }
 
-@test "cmd_connect mentions host_alt in failure when configured" {
-    config_set host_alt 192.168.1.50
+@test "cmd_connect with port arg updates adb_port before reconnecting" {
+    STUB_ADB_OUTPUT="connected to 192.168.1.51:41267" run cmd_connect 41267
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Updated adb_port to 41267"* ]]
+    [[ "$output" == *"Connected via 192.168.1.51:41267"* ]]
+
     config_load
-    STUB_ADB_OUTPUT="failed to connect" STUB_ADB_EXIT=1 run cmd_connect
-    [ "$status" -ne 0 ]
-    [[ "$output" == *"192.168.1.50"* ]]
+    [ "${PCTL_ADB_PORT}" = "41267" ]
 }
 
-# ---- cmd_status -------------------------------------------------------------
-#
-# cmd_status makes 5 different adb_shell calls. The stub adb cannot
-# differentiate by argv, so we override `adb_shell` to dispatch on its args
-# to the matching real-output fixture from test/fixtures/.
+@test "cmd_connect with non-numeric port arg fails fast" {
+    run cmd_connect notaport
+    [ "$status" -ne 0 ]
+    [[ "$output" == *"must be a number"* ]]
+}
 
-_status_dispatch_adb_shell() {
+@test "cmd_connect failure surfaces all three recovery hints" {
+    STUB_ADB_OUTPUT="List of devices attached" run cmd_connect
+    [ "$status" -ne 0 ]
+    [[ "$output" == *"USB"* ]]
+    [[ "$output" == *"connect <new-port>"* ]]
+    [[ "$output" == *"phonectl pair"* ]]
+}
+
+# ---- cmd_status (SSH-only) ------------------------------------------------
+#
+# cmd_status makes multiple ssh_run calls for different commands. The ssh
+# stub returns the same output for every call, so we override ssh_run
+# directly to dispatch by argv to the right fixture - same pattern v0.1
+# used for cmd_status testing, just with SSH not ADB this time.
+
+_status_dispatch_ssh_run() {
     case "$*" in
-        *"getprop ro.product.model"*)            cat "${PHONECTL_FIXTURES}/getprop_model.txt" ;;
-        *"getprop ro.build.version.release"*)    cat "${PHONECTL_FIXTURES}/getprop_android.txt" ;;
-        *"dumpsys battery"*)                     cat "${PHONECTL_FIXTURES}/dumpsys_battery.txt" ;;
-        *"df /sdcard"*)                          cat "${PHONECTL_FIXTURES}/df_sdcard.txt" ;;
-        *"cat /proc/uptime"*)                    cat "${PHONECTL_FIXTURES}/proc_uptime.txt" ;;
-        *"ip addr show wlan0"*)                  cat "${PHONECTL_FIXTURES}/ip_addr_wlan0.txt" ;;
-        *) echo "stub adb_shell: unmatched: $*" >&2; return 1 ;;
+        *"getprop ro.product.model"*)            cat "${PHONECTL_FIXTURES}/ssh_getprop_model.txt" ;;
+        *"getprop ro.build.version.release"*)    cat "${PHONECTL_FIXTURES}/ssh_getprop_android.txt" ;;
+        *"termux-battery-status"*)               cat "${PHONECTL_FIXTURES}/termux_battery_status.json" ;;
+        *"df /storage/emulated/0"*)              cat "${PHONECTL_FIXTURES}/ssh_df_storage.txt" ;;
+        *"uptime"*)                              cat "${PHONECTL_FIXTURES}/ssh_uptime.txt" ;;
+        *"termux-wifi-connectioninfo"*)          cat "${PHONECTL_FIXTURES}/termux_wifi_connectioninfo.json" ;;
+        *)
+            echo "unmatched ssh_run argv: $*" >&2
+            return 1
+            ;;
     esac
 }
 
-@test "cmd_status renders all sections from real fixtures" {
-    adb_shell() { _status_dispatch_adb_shell "$@"; }
-    STUB_SSH_OUTPUT="ok" STUB_SSH_EXIT=0 run cmd_status
+@test "cmd_status renders all sections against real fixtures" {
+    ssh_run() { _status_dispatch_ssh_run "$@"; }
+    ssh_check() { return 0; }   # reachability probe always succeeds
+
+    run cmd_status
     [ "$status" -eq 0 ]
 
     [[ "$output" == *"── Device ──"* ]]
     [[ "$output" == *"RMX3360"* ]]
-    [[ "$output" == *"13"* ]]                # Android version
+    [[ "$output" == *"13"* ]]
 
     [[ "$output" == *"── Battery ──"* ]]
-    [[ "$output" == *"53%"* ]]
-    [[ "$output" == *"34.5°C"* ]]
-    [[ "$output" == *"not charging"* ]]      # status code 4
+    [[ "$output" == *"1%"* ]]            # level from fixture
+    [[ "$output" == *"41"* ]]            # temperature
+    [[ "$output" == *"NOT_CHARGING"* ]]
+    [[ "$output" == *"UNPLUGGED"* ]]
 
     [[ "$output" == *"── Storage ──"* ]]
     [[ "$output" == *"GB"* ]]
-    [[ "$output" == *"12%"* ]]               # Use%
+    [[ "$output" == *"18%"* ]]
 
     [[ "$output" == *"── Uptime ──"* ]]
+    [[ "$output" == *"1:09"* ]]          # parsed from ssh_uptime fixture
 
     [[ "$output" == *"── Network ──"* ]]
     [[ "$output" == *"192.168.1.51"* ]]
+    [[ "$output" == *"-38"* ]]           # rssi
+    [[ "$output" == *"780"* ]]           # link_speed_mbps
     [[ "$output" == *"reachable"* ]]
 }
 
-@test "cmd_status marks SSH unreachable when ssh_check fails" {
-    adb_shell() { _status_dispatch_adb_shell "$@"; }
-    STUB_SSH_EXIT=1 run cmd_status
-    [ "$status" -eq 0 ]
-    [[ "$output" == *"unreachable"* ]]
+@test "cmd_status fails loud when SSH is unreachable" {
+    ssh_check() { return 1; }    # reachability probe fails
+
+    run cmd_status
+    [ "$status" -ne 0 ]
+    [[ "$output" == *"SSH unreachable"* ]]
+}
+
+@test "cmd_status with no host configured fails with init hint" {
+    rm -f "${XDG_CONFIG_HOME}/phonectl/config"
+    config_load
+    run cmd_status
+    [ "$status" -ne 0 ]
+    [[ "$output" == *"phonectl init"* ]]
 }
