@@ -48,7 +48,7 @@ phonectl/
 │   │   ├── init.sh           init (first-run wizard, pure manual prompts)
 │   │   ├── pair.sh           pair (Android 11+ wireless-debugging wizard)
 │   │   ├── connection.sh     ssh, connect, shell, status
-│   │   ├── info.sh           battery, ip, storage, uptime, info, stats
+│   │   ├── info.sh           battery, info, ip, storage, uptime (stats: planned)
 │   │   ├── transfer.sh       pull, push, backup
 │   │   ├── control.sh        reboot, wake, scrcpy, install
 │   │   ├── termux.sh         exec, proot
@@ -121,15 +121,21 @@ Example: `phonectl battery`
 
 ```
 1. User runs `phonectl battery`
-2. bin/phonectl sources lib/core/{config,deps,output}.sh
-3. deps.sh confirms `adb` is installed; aborts with hint if not
+2. bin/phonectl sources lib/core/{config,deps,output,ssh}.sh + lib/commands/info.sh
+3. deps.sh confirms `ssh` and `jq` are installed; aborts with hint if not
 4. config.sh loads ~/.config/phonectl/config + applies env overrides
 5. bin/phonectl dispatches to lib/commands/info.sh::cmd_battery
-6. cmd_battery sources lib/core/adb.sh, calls `adb_shell dumpsys battery`
-7. Output is parsed (level, status, plugged, temperature)
-8. output.sh formats the result with colours and prints to stdout
+6. cmd_battery calls ssh_battery_status (SSH + termux-battery-status JSON)
+7. jq parses level / temperature / status / plugged / health
+8. output.sh formats the result as a `── Battery ──` panel with kv rows
 9. Exit code: 0 on success, non-zero with message on any failure
 ```
+
+Two transport layers are in use across the verb set:
+- **SSH** is the default for daily verbs (`status`, `battery`, `info`, `ip`,
+  `storage`, `uptime`, `ssh`, `pull`, `push`). Survives Android 11+ reboots.
+- **ADB** is reserved for verbs whose purpose is ADB (`pair`, `connect`).
+  No `--ssh` / `--adb` flag layer.
 
 ---
 

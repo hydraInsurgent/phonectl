@@ -1,6 +1,6 @@
 {
   "name": "phonectl",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Bash CLI to manage an Android phone as a headless home server, via adb + ssh + scrcpy.",
   "bin": {
     "phonectl": "./bin/phonectl"

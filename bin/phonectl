@@ -38,6 +38,8 @@ source "${PCTL_LIB}/commands/pair.sh"
 source "${PCTL_LIB}/commands/connection.sh"
 # shellcheck source=lib/commands/transfer.sh
 source "${PCTL_LIB}/commands/transfer.sh"
+# shellcheck source=lib/commands/info.sh
+source "${PCTL_LIB}/commands/info.sh"
 
 # Read defaults + ~/.config/phonectl/config + PHONECTL_* env overrides.
 config_load
@@ -100,6 +102,21 @@ case "${cmd}" in
         ;;
     push)
         cmd_push "$@"
+        ;;
+    battery)
+        cmd_battery "$@"
+        ;;
+    info)
+        cmd_info "$@"
+        ;;
+    ip)
+        cmd_ip "$@"
+        ;;
+    storage)
+        cmd_storage "$@"
+        ;;
+    uptime)
+        cmd_uptime "$@"
         ;;
     *)
         error "unknown command: ${cmd}"

@@ -2,7 +2,7 @@
 
 A bash CLI to manage an Android phone repurposed as a headless home server, via `adb`, `ssh`, and `scrcpy`. Distributed (eventually) via npm.
 
-> **Status: v0.2 in development.** 10 verbs working end-to-end against the test device. Not yet published to npm — that lands at v1.0.0 once the full v1 verb set is in.
+> **Status: v0.3 shipped.** 15 verbs working end-to-end against the test device. Not yet published to npm - that lands at v1.0.0 once the full v1 verb set is in.
 
 ```
 phonectl ssh [cmd...]           SSH into Termux (interactive or one-shot)
@@ -10,6 +10,13 @@ phonectl status                 SSH-based snapshot: model, battery (Termux:API),
                                 storage, uptime, WiFi info, SSH reachability
 phonectl pull <remote> <local>  Copy a file from the phone to this machine (via scp)
 phonectl push <local> <remote>  Copy a file from this machine to the phone (via scp)
+
+phonectl battery                Battery panel: level / temp / status / plug / health
+phonectl info                   Device panel: model + Android version
+phonectl ip                     Print just the WiFi IP (one line, scriptable)
+phonectl storage [<path>]       Storage panel for <path>. Default /storage/emulated/0.
+                                `termux` alias = $PREFIX.
+phonectl uptime                 Print just the uptime string (one line)
 
 phonectl pair                   Android 11+ wireless-debugging pair wizard
 phonectl connect [<port>]       Connect ADB (USB-first / wireless-fallback).
@@ -63,7 +70,7 @@ Per-call overrides via env vars are also supported (`PHONECTL_HOST`, `PHONECTL_S
 npm test
 ```
 
-`bats-core` runs the suite (86 tests in v0.1). Tests use PATH-stubbed `adb` / `ssh` and real-phone outputs captured in `test/fixtures/`, so parsers are exercised against the exact data they will see in production.
+`bats-core` runs the suite (119 tests as of v0.3). Tests use PATH-stubbed `adb` / `ssh` / `scp` and real-phone outputs captured in `test/fixtures/`, so parsers are exercised against the exact data they will see in production.
 
 ## Why this exists
 
@@ -78,8 +85,9 @@ There is an unrelated Rust CLI at [github.com/Sanjai-Shaarugesh/phonectl](https:
 ## Roadmap
 
 - **v0.1 (shipped):** foundation, scaffold, 9 verbs, `bats-core` test infra, local install via `npm link`.
-- **v0.2 (current):** SSH-default refactor + `pair` verb. `status` / `pull` / `push` now go over SSH (survive Android 11+ reboots, no re-pair needed). `pair` walks the Android 11+ pair flow. `connect` takes an optional `<port>` arg for the "trust persists, port changed" recovery case. `init` rewritten as pure manual prompts (fixes v0.1 piped-stdin hang).
-- **v0.3 → v0.X:** remaining 14 verbs across multiple plans — `battery`, `ip`, `storage`, `uptime`, `info`, `stats`, `backup`, `reboot`, `wake`, `scrcpy`, `install`, `exec`, `proot`, `about`.
+- **v0.2 (shipped):** SSH-default refactor + `pair` verb. `status` / `pull` / `push` now go over SSH (survive Android 11+ reboots, no re-pair needed). `pair` walks the Android 11+ pair flow. `connect` takes an optional `<port>` arg for the "trust persists, port changed" recovery case. `init` rewritten as pure manual prompts (fixes v0.1 piped-stdin hang).
+- **v0.3 (shipped):** device-info verbs split out of `status` - `battery`, `info`, `ip`, `storage`, `uptime`. Multi-field verbs render status-style panels; `ip` and `uptime` print bare one-line values for scripting. All reuse v0.2's SSH-based data sources.
+- **v0.4 → v0.X:** remaining 9 verbs across multiple plans - `stats`, `backup`, `reboot`, `wake`, `scrcpy`, `install`, `exec`, `proot`, `about`.
 - **v1.0.0:** full set, README polish, `npm publish` as `phonectl`.
 
 ## License

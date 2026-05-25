@@ -35,19 +35,37 @@ teardown() { phonectl_test_teardown; }
 @test "phonectl version prints package.json version" {
     run_phonectl version
     [ "$status" -eq 0 ]
-    [ "$output" = "phonectl 0.1.0" ]
+    # Compare against whatever package.json currently has - avoids
+    # bumping this test on every version increment.
+    local expected
+    expected=$(grep -E '"version"[[:space:]]*:' "${PHONECTL_ROOT}/package.json" \
+        | head -1 \
+        | sed -E 's/.*"version"[[:space:]]*:[[:space:]]*"([^"]+)".*/\1/')
+    [ "$output" = "phonectl ${expected}" ]
 }
 
 @test "phonectl --version works" {
     run_phonectl --version
     [ "$status" -eq 0 ]
-    [ "$output" = "phonectl 0.1.0" ]
+    # Compare against whatever package.json currently has - avoids
+    # bumping this test on every version increment.
+    local expected
+    expected=$(grep -E '"version"[[:space:]]*:' "${PHONECTL_ROOT}/package.json" \
+        | head -1 \
+        | sed -E 's/.*"version"[[:space:]]*:[[:space:]]*"([^"]+)".*/\1/')
+    [ "$output" = "phonectl ${expected}" ]
 }
 
 @test "phonectl -V works" {
     run_phonectl -V
     [ "$status" -eq 0 ]
-    [ "$output" = "phonectl 0.1.0" ]
+    # Compare against whatever package.json currently has - avoids
+    # bumping this test on every version increment.
+    local expected
+    expected=$(grep -E '"version"[[:space:]]*:' "${PHONECTL_ROOT}/package.json" \
+        | head -1 \
+        | sed -E 's/.*"version"[[:space:]]*:[[:space:]]*"([^"]+)".*/\1/')
+    [ "$output" = "phonectl ${expected}" ]
 }
 
 @test "unknown command exits non-zero with helpful error" {

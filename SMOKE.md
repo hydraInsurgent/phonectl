@@ -4,8 +4,8 @@ Manual end-to-end checklist run against a real phone before considering a
 release "done". Run with the device awake and reachable on the configured
 host / port.
 
-**Test device for v0.2:** Realme GT Master (RMX3360, Android 13) at
-`192.168.1.51`, SSH `8022`, Termux + sshd (now runit-supervised) + Termux:API.
+**Test device for v0.3:** Realme GT Master (RMX3360, Android 13) at
+`192.168.1.51`, SSH `8022`, Termux + sshd (runit-supervised) + Termux:API.
 
 Tick each box only after the listed expectation matches what you actually
 see. If a step fails, stop and fix in code rather than ticking through.
@@ -30,7 +30,7 @@ see. If a step fails, stop and fix in code rather than ticking through.
 - [ ] Exit code `0`
 
 ### `phonectl version`
-- [ ] Prints `phonectl 0.2.0`
+- [ ] Prints `phonectl 0.3.0`
 - [ ] Exit code `0`
 
 ### `phonectl init` (NEW v0.2 - pure manual prompts, no USB / ADB needed)
@@ -79,6 +79,41 @@ see. If a step fails, stop and fix in code rather than ticking through.
 - [ ] Pushes a local file to `/sdcard/`
 - [ ] Round-trip (push then pull) yields byte-identical content
 - [ ] Missing args: prints usage hint, exit non-zero
+
+---
+
+## v0.3 verbs (device-info split)
+
+All five reuse v0.2 data sources (Termux:API + ssh) - so if `phonectl status`
+works, these should too. Format split:
+- **Status-style panels** (header + kv rows): `battery`, `info`, `storage`
+- **Bare one-line value** (script-friendly): `ip`, `uptime`
+
+### `phonectl battery` (NEW v0.3)
+- [ ] Renders a `── Battery ──` panel with Level / Temp / Status / Plug / Health
+- [ ] Values match what `phonectl status` shows in its Battery section
+- [ ] No-host case: `phonectl init` hint
+
+### `phonectl info` (NEW v0.3)
+- [ ] Renders a `── Device ──` panel with just Model + Android version
+- [ ] Intentionally minimal: no kernel, serial, build fingerprint
+- [ ] On the test phone: `Model: RMX3360`, `Android: 13`
+
+### `phonectl ip` (NEW v0.3 - bare value)
+- [ ] Prints ONLY the IP, no header / no colour / no extras
+- [ ] Scriptable: `IP=$(phonectl ip); [[ "$IP" =~ ^[0-9.]+$ ]] && echo good`
+- [ ] On missing IP in JSON: clear error, non-zero exit
+
+### `phonectl storage [<path>]` (NEW v0.3)
+- [ ] No args: panel for `/storage/emulated/0` (default user-data partition)
+- [ ] `phonectl storage termux`: panel for `$PREFIX` (Termux install root). Verify wire payload sends literal `$PREFIX` so the phone expands it.
+- [ ] `phonectl storage /`: panel for `/` (sanity test for arbitrary path)
+- [ ] Total / Used / Free shown in GB with `use%`
+
+### `phonectl uptime` (NEW v0.3 - bare value)
+- [ ] Prints ONLY the uptime string (e.g. `1:09`, `2:48`, `1 day, 3:45`)
+- [ ] Scriptable: `UP=$(phonectl uptime)` captures a clean value
+- [ ] Handles both short (`up 1:09`) and long (`up 1 day, 3:45`) formats
 
 ---
 
