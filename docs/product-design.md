@@ -58,18 +58,18 @@ command surface that hides that complexity and grows alongside the homelab.
 This document describes the **v1 product** (the target we are building toward).
 PhoneCTL ships in phases; today's status:
 
-**v0.2 (live, on `feature/v0.2-#2`, not yet on npm):**
+**v0.3 (live, not yet on npm):**
 - CLI distributed locally via `npm link` from source; `npm publish` deferred to v1.0.0
 - Single device, single config file at `~/.config/phonectl/config` (parsed not sourced, `chmod 600`)
 - Bash implementation - relies on `adb`, `ssh`, `scp` installed on the host
-- **10 verbs working**: `init`, `ssh`, `connect`, `status`, `pull`, `push`, `config`, `help`, `version`, `pair` (new in v0.2)
-- **SSH-default architecture**: `status`, `pull`, `push` use SSH (survives Android 11+ reboots; uses `termux-battery-status`, `termux-wifi-connectioninfo`, scp, etc.). `pair` and `connect` are ADB-purpose by their nature. No `--adb` / `--ssh` flag layer.
-- `bats-core` test harness with PATH-stubbed `adb` / `ssh` / `scp` and real-phone fixtures; 104 tests passing.
-- **Phone-side prereqs documented**: `termux-api` package + Termux:API APK for the `status` SSH path.
+- **15 verbs working**: `init`, `ssh`, `connect`, `status`, `pull`, `push`, `config`, `help`, `version`, `pair` (v0.2), `battery`, `info`, `ip`, `storage`, `uptime` (v0.3)
+- **SSH-default architecture**: every daily verb (`status`, `pull`, `push`, plus all five device-info verbs) uses SSH. Survives Android 11+ reboots. `pair` and `connect` are ADB-purpose by their nature. No `--adb` / `--ssh` flag layer.
+- `bats-core` test harness with PATH-stubbed `adb` / `ssh` / `scp` and real-phone fixtures; 119 tests passing.
+- **Phone-side prereqs documented**: `termux-api` package + Termux:API APK for the SSH-based info path.
 
-**Coming in v0.3 → v1.0.0 (still in v1 scope, not started):**
-- Remaining 14 verbs:
-  - **Device info:** `battery`, `ip`, `storage`, `uptime`, `info`, `stats`
+**Coming in v0.4 → v1.0.0 (still in v1 scope, not started):**
+- Remaining 9 verbs:
+  - **Device info:** `stats` (CPU / RAM / SoC temp / load - the heavier sibling of `info`)
   - **File transfer:** `backup`
   - **Device control:** `reboot`, `wake`, `scrcpy`, `install`
   - **Termux helpers:** `exec`, `proot`
@@ -96,9 +96,14 @@ fallback) and prints the device list. `phonectl shell` opens an interactive
 and temperature, storage, uptime, IP, and SSH reachability.
 
 ### Device info
-`phonectl battery | ip | storage | uptime | info` each print one section of the
-status panel. Useful in scripts and quick checks. Battery parses `dumpsys battery`,
-storage parses `df /sdcard`, info reads `getprop`.
+`phonectl battery | info | storage` each render a status-style panel for one
+section of the device snapshot. `phonectl ip | uptime` print a bare one-line
+value, designed for shell capture (`IP=$(phonectl ip)`). All five go over SSH
+and reuse Termux:API where possible: `battery` from `termux-battery-status`
+(level / temp / status / plug / health), `ip` from `termux-wifi-connectioninfo`,
+`info` from `getprop` (model + Android version, intentionally minimal),
+`storage` from `df` against any path (default `/storage/emulated/0`; the
+`termux` alias resolves to `$PREFIX`), `uptime` from the `uptime` command.
 
 ### System stats
 `phonectl stats` is a one-shot performance snapshot via `adb shell`: CPU model

@@ -5,6 +5,55 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2026-05-25
+
+Five device-info verbs split out of `phonectl status` so each piece of device
+state is addressable on its own (and scriptable). All reuse the SSH-based
+data sources already wired in v0.2 - no new fixtures, no new dependencies,
+no architecture drift. `phonectl status` is unchanged.
+
+### Added
+
+- `battery` - status-style panel: level / temp / status / plug / health, via
+  `termux-battery-status` (Termux:API JSON).
+- `info` - status-style panel: model + Android version, via `getprop`.
+  Intentionally minimal - no kernel, serial, or build fingerprint.
+- `ip` - bare one-line WiFi IP from `termux-wifi-connectioninfo`. Designed for
+  capture: `IP=$(phonectl ip)`.
+- `storage [<path>]` - status-style panel for any path via `df`. Default is
+  `/storage/emulated/0`. The `termux` alias sends a literal `$PREFIX` over
+  the wire so the phone-side bash expands it.
+- `uptime` - bare one-line uptime string from the `uptime` command. Handles
+  short (`1:09`) and long (`1 day, 3:45`) formats.
+- New `DEVICE INFO` section in `phonectl help`.
+- 15 new bats tests in `test/cmd_info.bats` covering all five verbs (104 → 119).
+
+### Changed
+
+- Uptime parser in both `cmd_status` and the new `cmd_uptime` re-anchored on
+  `, load average:` (present in both Linux and Termux output). The v0.2 regex
+  required a `, N user(s),` segment that Termux's `uptime` does not emit, so
+  the previous parser would have started failing the moment we hit non-Linux
+  output. Strip a trailing `, N user(s)` if present (Linux but not Termux).
+- `test/cmd_meta.bats` version assertions now read `package.json` dynamically
+  instead of hard-coding `0.1.0`, so future version bumps don't need a test
+  edit.
+- `package.json` version: `0.2.0` → `0.3.0`.
+
+### Notes
+
+- Verified live on Realme GT Master Edition (RMX3360, Android 13) at
+  `192.168.1.51:8022`: battery 100% FULL 45.6°C, info RMX3360 / Android 13,
+  ip 192.168.1.51, uptime 2:59, storage (default + `termux` alias + `/`).
+  `status` regression-clean.
+- 119 bats tests (up from 104 in v0.2). All green.
+- Format split is intentional: multi-field verbs (`battery`, `info`,
+  `storage`) get status-style panels so they look at home next to `status`;
+  single-value verbs (`ip`, `uptime`) print the bare value so they pipe
+  cleanly into shell variables.
+
+[0.3.0]: https://github.com/hydraInsurgent/phonectl/releases/tag/v0.3.0
+
 ## [0.2.0] - 2026-05-25
 
 SSH-default architecture refactor + new `pair` verb. Driven by the realisation

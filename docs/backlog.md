@@ -32,10 +32,8 @@ Future features - not yet started. Add GitHub issue number when created.
 
 | # | Title | Priority | Notes |
 |---|-------|----------|-------|
-| - | `phonectl pair` | High | Walk user through Android 11+ wireless debugging pair flow (pair port + 6-digit code on phone, connect port back), update `~/.config/phonectl/config` with the new dynamic adb_port. Removes manual ADB-port juggling after every phone reboot. |
-| - | `phonectl status` ADB fallback | High | When ADB is unreachable (port rotated, debugging off post-reboot), fall back to SSH + `termux-battery-status` so `status` still returns level/temp/plug-state. Lose voltage + charge_counter + OPLUS extras in fallback mode; surface that in output. |
-| - | `phonectl battery` (snapshot + log) | Medium | Verb group: `battery` for one-shot snapshot, `battery log` for continuous CSV. Default path: SSH + `termux-battery-status` (level/status/temp/current; no voltage / cc). `--adb` flag forces dumpsys path with full OPLUS-rich data. Logger that runs *on the phone* (Termux + Termux:Boot + tmux) is the production design; standalone `~/battery-logger.sh` becomes the reference for the ADB-rich one-shot. |
-| - | `pull` / `push` SSH path via scp | Medium | Add SSH-based file transfer alongside the existing ADB path. Default: SSH (works post-reboot without re-pair). `--adb` opt-in for the ADB path when ADB is up. Aligns with the SSH-default + ADB-fallback architecture. |
+| - | `phonectl battery log` (continuous CSV) | Medium | Companion to v0.3's one-shot `phonectl battery`. Runs *on the phone* (Termux + Termux:Boot + tmux) writing CSV rows for level / status / temp / current. The standalone `~/battery-logger.sh` becomes the reference. ADB-rich variant (voltage + charge_counter + OPLUS extras) is a separate `--adb` opt-in. |
+| - | `phonectl stats` | Medium | Heavier sibling of `info`: CPU model + core count, RAM total + available, SoC temp, uptime + load. Same data Termux would see, surfaced as one panel for at-a-glance perf snapshots. |
 
 ---
 
