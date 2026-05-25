@@ -102,12 +102,17 @@ cmd_status() {
     used_gb=$(awk -v v="${used_kb:-0}" 'BEGIN { printf "%.1f", v/1024/1024 }')
     avail_gb=$(awk -v v="${avail_kb:-0}" 'BEGIN { printf "%.1f", v/1024/1024 }')
 
-    # ---- parse uptime ("HH:MM:SS up X day, Y:Z, load average: ...") ----
-    # Extract everything between "up " and the next comma. Handles both
-    # short (" up 1:09,") and long (" up 1 day, 3:45,") formats.
+    # ---- parse uptime ----
+    # Linux:  "HH:MM:SS up <UPTIME>, N user(s),  load average: ..."
+    # Termux: "HH:MM:SS up <UPTIME>,  load average: ..."   (no users segment)
+    # <UPTIME> can be "1:09", "5 min", "1 day, 3:45", or "12 days, 17:32" -
+    # the long form has an internal comma. Anchor on ", load average:" which
+    # always sits after any uptime form, then strip a trailing ", N user(s)"
+    # if Linux's format included it.
     local uptime_pretty
     uptime_pretty=$(printf '%s' "${uptime_line}" \
-        | sed -nE 's/^.* up +([^,]+(,[^,]*day[^,]*)?),.*$/\1/p' \
+        | sed -nE 's/^.* up +(.+), +load average:.*$/\1/p' \
+        | sed -E 's/, +[0-9]+ users?$//' \
         | head -1)
     [[ -z "${uptime_pretty}" ]] && uptime_pretty="?"
 

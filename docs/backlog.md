@@ -22,7 +22,7 @@ What is currently being planned or built:
 
 | Plan file | Issue | Branch | Status |
 |-----------|-------|--------|--------|
-| - | - | - | - |
+| `PCTL-P3-v0.3-device-info-verbs.md` | [#3](https://github.com/hydraInsurgent/phonectl/issues/3) | `feature/v0.3-#3` | In Progress |
 
 ---
 

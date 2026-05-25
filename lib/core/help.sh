@@ -18,6 +18,14 @@ CONNECTION (SSH)
                             storage, uptime, WiFi). Requires `termux-api`
                             installed on the phone.
 
+DEVICE INFO (SSH)
+  battery                   Battery panel: level / temp / status / plug / health
+  info                      Device panel: model + Android version
+  ip                        Print just the WiFi IP (one line, scriptable)
+  storage [<path>]          Storage usage panel for <path>. Default
+                            /storage/emulated/0. `termux` alias = $PREFIX.
+  uptime                    Print just the uptime string (one line)
+
 FILE TRANSFER (SCP)
   pull <remote> <local>     Copy a file from the phone to this machine
   push <local> <remote>     Copy a file from this machine to the phone
