@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+# test/_stubs/scp - PATH-stub scp for unit tests.
+#
+# Same shape as the adb / ssh stubs: env vars control behavior so tests
+# can drive the wrapper deterministically without a real network.
+#
+#   STUB_SCP_OUTPUT       : literal stdout
+#   STUB_SCP_OUTPUT_FILE  : file whose contents go to stdout
+#   STUB_SCP_STDERR       : literal stderr
+#   STUB_SCP_EXIT         : exit code (default 0)
+#   STUB_SCP_LOG          : append-the-argv path; tests grep this to
+#                           assert correct argv construction (e.g.
+#                           the capital-P port flag scp requires)
+
+set -u
+
+if [[ -n "${STUB_SCP_LOG:-}" ]]; then
+    printf 'scp %s\n' "$*" >> "${STUB_SCP_LOG}"
+fi
+
+if [[ -n "${STUB_SCP_OUTPUT_FILE:-}" ]]; then
+    cat "${STUB_SCP_OUTPUT_FILE}"
+elif [[ -n "${STUB_SCP_OUTPUT:-}" ]]; then
+    printf '%s\n' "${STUB_SCP_OUTPUT}"
+fi
+
+if [[ -n "${STUB_SCP_STDERR:-}" ]]; then
+    printf '%s\n' "${STUB_SCP_STDERR}" >&2
+fi
+
+exit "${STUB_SCP_EXIT:-0}"

@@ -37,3 +37,6 @@ Thumbs.db
 
 # Captured router admin pages (contain MAC addresses, internal IPs, ISP details, GPON serials)
 assets/Router/
+
+# Battery telemetry pulled from the phone (grows over time, runtime data not source code)
+battery-log.csv

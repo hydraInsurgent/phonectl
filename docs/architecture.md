@@ -45,7 +45,8 @@ phonectl/
 │   └── phonectl              Main CLI entrypoint (bash dispatcher)
 ├── lib/
 │   ├── commands/             One file per command group
-│   │   ├── init.sh           init (first-run wizard)
+│   │   ├── init.sh           init (first-run wizard, pure manual prompts)
+│   │   ├── pair.sh           pair (Android 11+ wireless-debugging wizard)
 │   │   ├── connection.sh     ssh, connect, shell, status
 │   │   ├── info.sh           battery, ip, storage, uptime, info, stats
 │   │   ├── transfer.sh       pull, push, backup

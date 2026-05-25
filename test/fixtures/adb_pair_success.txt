@@ -1,0 +1,1 @@
+Successfully paired to 192.168.1.51:41267 [guid=adb-RMX3360-XXXXXX]

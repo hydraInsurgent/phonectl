@@ -32,6 +32,8 @@ source "${PCTL_LIB}/core/help.sh"
 source "${PCTL_LIB}/commands/config.sh"
 # shellcheck source=lib/commands/init.sh
 source "${PCTL_LIB}/commands/init.sh"
+# shellcheck source=lib/commands/pair.sh
+source "${PCTL_LIB}/commands/pair.sh"
 # shellcheck source=lib/commands/connection.sh
 source "${PCTL_LIB}/commands/connection.sh"
 # shellcheck source=lib/commands/transfer.sh
@@ -77,6 +79,9 @@ case "${cmd}" in
         ;;
     init)
         cmd_init "$@"
+        ;;
+    pair)
+        cmd_pair "$@"
         ;;
     config)
         cmd_config "$@"

@@ -5,6 +5,80 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - 2026-05-25
+
+SSH-default architecture refactor + new `pair` verb. Driven by the realisation
+during production use that Android 11+ rotates the wireless-ADB connect port
+on every phone reboot AND turns wireless debugging off on every reboot, so
+v0.1's ADB-default flow was fragile. SSH on Termux (port 8022, Termux:Boot
++ runit-supervised) survives reboots cleanly and is now the daily driver
+for `status`, `pull`, `push`. ADB is reserved for `pair` and `connect`.
+
+### Added
+
+- `pair` verb - wizard for Android 11+ wireless-debugging pair flow. Prompts
+  for the pair port + 6-digit code shown on the phone, runs `adb pair`,
+  parses the connect port from the success line, writes it to
+  `~/.config/phonectl/config` as `adb_port`.
+- `connect [<port>]` - optional port positional arg. With it, updates
+  `adb_port` then reconnects (the "trust persists, port changed"
+  post-reboot recovery case). Without it, runs USB-first / wireless-fallback
+  via new `adb_select_device`.
+- `lib/core/adb.sh::adb_select_device` - USB-first, wireless-fallback
+  selector. `adb_run` and `adb_shell` route through it; verbs no longer
+  encode `-s host:port` themselves.
+- `lib/core/ssh.sh::ssh_pull` / `ssh_push` - scp wrappers (with `-P` capital
+  port flag, BatchMode).
+- `lib/core/ssh.sh::ssh_battery_status` - `termux-battery-status` wrapper
+  with install-hint fallback when `termux-api` is missing.
+- `test/_stubs/scp` - PATH-stub for unit tests.
+- 10 real-phone fixtures + 4 synthetic fixtures for new code paths.
+
+### Changed
+
+- `init` rewritten as pure manual prompts (no `adb devices` calls, no
+  USB requirement). Side effect: fixes the v0.1 deferred bug where init
+  hung after the first prompt under piped stdin.
+- `status` rewritten to SSH-only. Battery from `termux-battery-status` JSON,
+  network from `termux-wifi-connectioninfo` JSON (replaces blocked-by-app-uid
+  `ip addr show wlan0`), uptime from `uptime` command (replaces blocked
+  `/proc/uptime`), df from `/storage/emulated/0`, model + Android from
+  `getprop`. Bonus fields surfaced: RSSI, link speed, frequency.
+- `pull` / `push` use scp instead of adb pull/push. Works post-reboot
+  without re-pair.
+- Help text reorganised into CONNECTION / FILE TRANSFER / ADB / CONFIG /
+  META sections to make the new transport split obvious.
+- `package.json` version: `0.1.0` → `0.2.0`.
+
+### Fixed
+
+- Bug in `adb_select_device`'s wireless-already-connected branch: original
+  `grep -qE "^<target>[[:space:]]+device$"` missed when `adb devices` 
+  appended `product:/model:` columns after `device`. Switched to
+  `awk '$1==target && $2=="device"'` which is robust to trailing columns.
+- v0.1 piped-stdin hang in `init` (resolved by `init` rewrite, not patched
+  in the old code path).
+
+### Removed
+
+- `lib/core/adb.sh::adb_device` and `adb_connect` helpers (superseded by
+  `adb_select_device` which handles both USB selection and wireless
+  fallback uniformly).
+
+### Notes
+
+- Verified live on Realme GT Master Edition (RMX3360, Android 13) at
+  `192.168.1.51:8022`: status, ssh one-shot, push/pull round-trip, connect
+  with port arg, version, help. All passing.
+- 104 bats tests (up from 86 in v0.1).
+- `termux-api` package + Termux:API APK are now hard prerequisites on the
+  phone (documented in `guides/phone-server-setup.md`).
+- The bare `sshd` line in the boot script was removed (sshd is now
+  runit-supervised). Backport to the Tasklog repo's
+  `scripts/setup-phone-boot.sh` is pending.
+
+[0.2.0]: https://github.com/hydraInsurgent/phonectl/releases/tag/v0.2.0
+
 ## [0.1.0] - 2026-05-06
 
 First milestone of PhoneCTL. Foundation, scaffold, and the first 9 verbs working
