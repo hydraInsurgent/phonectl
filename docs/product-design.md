@@ -58,15 +58,17 @@ command surface that hides that complexity and grows alongside the homelab.
 This document describes the **v1 product** (the target we are building toward).
 PhoneCTL ships in phases; today's status:
 
-**v0.1 (live, on `feature/v0.1-#1`, not yet on npm):**
+**v0.2 (live, on `feature/v0.2-#2`, not yet on npm):**
 - CLI distributed locally via `npm link` from source; `npm publish` deferred to v1.0.0
 - Single device, single config file at `~/.config/phonectl/config` (parsed not sourced, `chmod 600`)
-- Bash implementation - relies on `adb`, `ssh` installed on the host (`scrcpy` only required when its verb lands)
-- 9 verbs working: `init`, `ssh`, `connect`, `status`, `pull`, `push`, `config`, `help`, `version`
-- `bats-core` test harness with PATH-stubbed `adb` / `ssh` and real-phone fixtures
+- Bash implementation - relies on `adb`, `ssh`, `scp` installed on the host
+- **10 verbs working**: `init`, `ssh`, `connect`, `status`, `pull`, `push`, `config`, `help`, `version`, `pair` (new in v0.2)
+- **SSH-default architecture**: `status`, `pull`, `push` use SSH (survives Android 11+ reboots; uses `termux-battery-status`, `termux-wifi-connectioninfo`, scp, etc.). `pair` and `connect` are ADB-purpose by their nature. No `--adb` / `--ssh` flag layer.
+- `bats-core` test harness with PATH-stubbed `adb` / `ssh` / `scp` and real-phone fixtures; 104 tests passing.
+- **Phone-side prereqs documented**: `termux-api` package + Termux:API APK for the `status` SSH path.
 
-**Coming in v0.2 → v1.0.0 (still in v1 scope, not started):**
-- Remaining 13 verbs:
+**Coming in v0.3 → v1.0.0 (still in v1 scope, not started):**
+- Remaining 14 verbs:
   - **Device info:** `battery`, `ip`, `storage`, `uptime`, `info`, `stats`
   - **File transfer:** `backup`
   - **Device control:** `reboot`, `wake`, `scrcpy`, `install`

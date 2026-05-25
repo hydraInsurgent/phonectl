@@ -2,23 +2,31 @@
 
 A bash CLI to manage an Android phone repurposed as a headless home server, via `adb`, `ssh`, and `scrcpy`. Distributed (eventually) via npm.
 
-> **Status: v0.1 in development.** 9 verbs working end-to-end against the test device. Not yet published to npm — that lands at v1.0.0 once the full 22-verb set is in.
+> **Status: v0.2 in development.** 10 verbs working end-to-end against the test device. Not yet published to npm — that lands at v1.0.0 once the full v1 verb set is in.
 
 ```
-phonectl ssh                    Drop into a Termux shell on the phone
-phonectl connect                Wireless ADB connect (with host_alt fallback)
-phonectl status                 Model, battery, storage, IP, SSH reachability - one panel
-phonectl pull <remote> <local>  Copy a file from the phone to this machine
-phonectl push <local> <remote>  Copy a file from this machine to the phone
-phonectl init                   First-run wizard to write ~/.config/phonectl/config
+phonectl ssh [cmd...]           SSH into Termux (interactive or one-shot)
+phonectl status                 SSH-based snapshot: model, battery (Termux:API),
+                                storage, uptime, WiFi info, SSH reachability
+phonectl pull <remote> <local>  Copy a file from the phone to this machine (via scp)
+phonectl push <local> <remote>  Copy a file from this machine to the phone (via scp)
+
+phonectl pair                   Android 11+ wireless-debugging pair wizard
+phonectl connect [<port>]       Connect ADB (USB-first / wireless-fallback).
+                                With <port>, updates adb_port first
+                                (post-reboot recovery when trust persists).
+
+phonectl init                   First-run wizard - pure manual prompts
 phonectl config <key> <value>   Set a single config value
 phonectl help                   Command list
 phonectl version                Print version
 ```
 
-## Install (from source, while v0.1 is unpublished)
+**Architecture in v0.2 (set after WiFi-debugging in production):** SSH is the daily driver (survives Android 11+ reboots since Termux + sshd + Termux:Boot keep it up). ADB is reserved for `pair` and `connect` since their whole purpose is ADB. No `--adb` / `--ssh` flag layer — verbs default to whichever transport makes sense.
 
-Requires `adb`, `ssh`, and Node.js (for `npm link`). Linux and macOS only for now.
+## Install (from source, until v1.0.0 npm publish)
+
+Requires `adb`, `ssh`, `scp`, `jq`, and Node.js (for `npm link`). On the phone side: Termux + sshd + Termux:API package + Termux:API APK. Linux and macOS only for now.
 
 ```bash
 git clone https://github.com/hydraInsurgent/phonectl.git
@@ -69,8 +77,9 @@ There is an unrelated Rust CLI at [github.com/Sanjai-Shaarugesh/phonectl](https:
 
 ## Roadmap
 
-- **v0.1 (current):** foundation, scaffold, the demo-able 9 verbs, `bats-core` test infra, local install via `npm link`. **No npm publish yet.**
-- **v0.2 → v0.X:** remaining 13 verbs land across multiple plans — `battery`, `ip`, `storage`, `uptime`, `info`, `stats`, `backup`, `reboot`, `wake`, `scrcpy`, `install`, `exec`, `proot`, `about`.
+- **v0.1 (shipped):** foundation, scaffold, 9 verbs, `bats-core` test infra, local install via `npm link`.
+- **v0.2 (current):** SSH-default refactor + `pair` verb. `status` / `pull` / `push` now go over SSH (survive Android 11+ reboots, no re-pair needed). `pair` walks the Android 11+ pair flow. `connect` takes an optional `<port>` arg for the "trust persists, port changed" recovery case. `init` rewritten as pure manual prompts (fixes v0.1 piped-stdin hang).
+- **v0.3 → v0.X:** remaining 14 verbs across multiple plans — `battery`, `ip`, `storage`, `uptime`, `info`, `stats`, `backup`, `reboot`, `wake`, `scrcpy`, `install`, `exec`, `proot`, `about`.
 - **v1.0.0:** full set, README polish, `npm publish` as `phonectl`.
 
 ## License
